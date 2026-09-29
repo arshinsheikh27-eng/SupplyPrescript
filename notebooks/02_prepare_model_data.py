@@ -44,7 +44,7 @@ orders["order_month"] = orders["order_date"].dt.month
 orders["order_day_of_week"] = orders["order_date"].dt.dayofweek
 
 # Keep Order Id for tracking/grouping only; do not use it as a model feature
-orders = orders.drop(columns=["order_date"])
+orders["order_date"] = orders["order_date"].dt.strftime("%Y-%m-%d %H:%M:%S")
 
 # Put tracking ID first, target last
 target = "late_delivery_risk"
