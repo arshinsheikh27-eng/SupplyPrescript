@@ -133,6 +133,12 @@ def get_alternatives(
             detail="Prediction not found"
         )
 
+    if prediction.delay_probability is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Prediction probability is missing"
+        )
+
     # V1 mapping:
     # No Risk -> 0
     # Any other risk value -> 1
@@ -140,12 +146,6 @@ def get_alternatives(
         late_delivery_risk = 0
     else:
         late_delivery_risk = 1
-
-    if prediction.delay_probability is None:
-        raise HTTPException(
-            status_code=400,
-            detail="Prediction probability is missing"
-        )
 
     try:
         recommendation = generate_recommendation(
@@ -159,7 +159,39 @@ def get_alternatives(
             detail=str(error)
         )
 
+    # Create a stable alternative ID for the generated recommendation.
+    alternative_id = f"REC-{shipment_id}"
+
+    alternative = (
+        db.query(Alternative)
+        .filter(Alternative.alternative_id == alternative_id)
+        .first()
+    )
+
+    if alternative is None:
+        alternative = Alternative(
+            alternative_id=alternative_id,
+            shipment_id=shipment_id,
+            estimated_cost=recommendation["estimated_cost"],
+            estimated_time=None,
+            action=recommendation["recommended_action"],
+            recommendation_reason=recommendation["recommendation_reason"]
+        )
+
+        db.add(alternative)
+
+    else:
+        alternative.estimated_cost = recommendation["estimated_cost"]
+        alternative.action = recommendation["recommended_action"]
+        alternative.recommendation_reason = (
+            recommendation["recommendation_reason"]
+        )
+
+    db.commit()
+    db.refresh(alternative)
+
     return {
+        "alternative_id": alternative.alternative_id,
         "order_id": recommendation["order_id"],
         "recommended_action": recommendation["recommended_action"],
         "estimated_cost": recommendation["estimated_cost"],
