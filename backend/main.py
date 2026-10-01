@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from database import SessionLocal
 from models import Shipment, Prediction, Alternative, Decision
+from optimization.optimization_model import generate_recommendation
 
 
 app = FastAPI(
@@ -52,7 +53,10 @@ def get_shipments(db: Session = Depends(get_db)):
 
 
 @app.get("/shipments/{shipment_id}")
-def get_shipment(shipment_id: str, db: Session = Depends(get_db)):
+def get_shipment(
+    shipment_id: str,
+    db: Session = Depends(get_db)
+):
     shipment = (
         db.query(Shipment)
         .filter(Shipment.shipment_id == shipment_id)
@@ -75,7 +79,10 @@ def get_shipment(shipment_id: str, db: Session = Depends(get_db)):
 
 
 @app.get("/shipments/{shipment_id}/prediction")
-def get_prediction(shipment_id: str, db: Session = Depends(get_db)):
+def get_prediction(
+    shipment_id: str,
+    db: Session = Depends(get_db)
+):
     prediction = (
         db.query(Prediction)
         .filter(Prediction.shipment_id == shipment_id)
@@ -98,29 +105,66 @@ def get_prediction(shipment_id: str, db: Session = Depends(get_db)):
 
 
 @app.get("/shipments/{shipment_id}/alternatives")
-def get_alternatives(shipment_id: str, db: Session = Depends(get_db)):
-    alternatives = (
-        db.query(Alternative)
-        .filter(Alternative.shipment_id == shipment_id)
-        .all()
+def get_alternatives(
+    shipment_id: str,
+    db: Session = Depends(get_db)
+):
+    shipment = (
+        db.query(Shipment)
+        .filter(Shipment.shipment_id == shipment_id)
+        .first()
     )
 
-    if not alternatives:
+    if shipment is None:
         raise HTTPException(
             status_code=404,
-            detail="No alternatives found"
+            detail="Shipment not found"
         )
 
-    return [
-        {
-            "alternative_id": alternative.alternative_id,
-            "shipment_id": alternative.shipment_id,
-            "estimated_cost": alternative.estimated_cost,
-            "estimated_time": alternative.estimated_time,
-            "action": alternative.action,
-        }
-        for alternative in alternatives
-    ]
+    prediction = (
+        db.query(Prediction)
+        .filter(Prediction.shipment_id == shipment_id)
+        .first()
+    )
+
+    if prediction is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Prediction not found"
+        )
+
+    # V1 mapping:
+    # No Risk -> 0
+    # Any other risk value -> 1
+    if prediction.risk_level == "No Risk":
+        late_delivery_risk = 0
+    else:
+        late_delivery_risk = 1
+
+    if prediction.delay_probability is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Prediction probability is missing"
+        )
+
+    try:
+        recommendation = generate_recommendation(
+            order_id=shipment.shipment_id,
+            late_delivery_risk=late_delivery_risk,
+            prediction_probability=prediction.delay_probability
+        )
+    except ValueError as error:
+        raise HTTPException(
+            status_code=400,
+            detail=str(error)
+        )
+
+    return {
+        "order_id": recommendation["order_id"],
+        "recommended_action": recommendation["recommended_action"],
+        "estimated_cost": recommendation["estimated_cost"],
+        "recommendation_reason": recommendation["recommendation_reason"],
+    }
 
 
 @app.post("/shipments/{shipment_id}/decisions")
@@ -177,7 +221,10 @@ def save_decision(
 
 
 @app.get("/shipments/{shipment_id}/decisions")
-def get_decisions(shipment_id: str, db: Session = Depends(get_db)):
+def get_decisions(
+    shipment_id: str,
+    db: Session = Depends(get_db)
+):
     shipment = (
         db.query(Shipment)
         .filter(Shipment.shipment_id == shipment_id)

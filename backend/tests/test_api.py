@@ -8,6 +8,7 @@ client = TestClient(app)
 
 def test_home():
     response = client.get("/")
+
     assert response.status_code == 200
     assert response.json()["message"] == "SupplyPrescript Backend is running"
 
@@ -56,8 +57,10 @@ def test_get_alternatives():
 
     data = response.json()
 
-    assert len(data) == 2
-    assert data[0]["shipment_id"] == "SHP001"
+    assert data["order_id"] == "SHP001"
+    assert data["recommended_action"] == "Alternate Supplier"
+    assert data["estimated_cost"] is None
+    assert "recommendation_reason" in data
 
 
 def test_save_decision():
