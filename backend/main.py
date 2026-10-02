@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from fastapi import FastAPI, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from database import SessionLocal
@@ -25,8 +25,8 @@ def get_db():
 
 
 class DecisionRequest(BaseModel):
-    alternative_id: str
-    selected_action: str
+    alternative_id: str = Field(min_length=1)
+    selected_action: str = Field(min_length=1)
 
 
 @app.get("/")
@@ -230,6 +230,13 @@ def save_decision(
         raise HTTPException(
             status_code=404,
             detail="Alternative not found for this shipment"
+        )
+
+    # Make sure the selected action matches the chosen alternative.
+    if alternative.action != decision_request.selected_action:
+        raise HTTPException(
+            status_code=400,
+            detail="Selected action does not match the alternative"
         )
 
     decision = Decision(

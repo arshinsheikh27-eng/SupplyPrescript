@@ -96,3 +96,57 @@ def test_shipment_not_found():
 
     assert response.status_code == 404
     assert response.json()["detail"] == "Shipment not found"
+
+
+def test_empty_alternative_id():
+    response = client.post(
+        "/shipments/SHP001/decisions",
+        json={
+            "alternative_id": "",
+            "selected_action": "Use alternate carrier"
+        }
+    )
+
+    assert response.status_code == 422
+
+
+def test_empty_selected_action():
+    response = client.post(
+        "/shipments/SHP001/decisions",
+        json={
+            "alternative_id": "ALT001",
+            "selected_action": ""
+        }
+    )
+
+    assert response.status_code == 422
+
+
+def test_selected_action_does_not_match_alternative():
+    response = client.post(
+        "/shipments/SHP001/decisions",
+        json={
+            "alternative_id": "ALT001",
+            "selected_action": "Wrong action"
+        }
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == (
+        "Selected action does not match the alternative"
+    )
+
+
+def test_alternative_not_found():
+    response = client.post(
+        "/shipments/SHP001/decisions",
+        json={
+            "alternative_id": "ALT999",
+            "selected_action": "Some action"
+        }
+    )
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == (
+        "Alternative not found for this shipment"
+    )
