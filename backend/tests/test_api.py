@@ -98,6 +98,27 @@ def test_shipment_not_found():
     assert response.json()["detail"] == "Shipment not found"
 
 
+def test_prediction_not_found():
+    response = client.get("/shipments/SHP999/prediction")
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Prediction not found"
+
+
+def test_alternatives_shipment_not_found():
+    response = client.get("/shipments/SHP999/alternatives")
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Shipment not found"
+
+
+def test_decisions_shipment_not_found():
+    response = client.get("/shipments/SHP999/decisions")
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Shipment not found"
+
+
 def test_empty_alternative_id():
     response = client.post(
         "/shipments/SHP001/decisions",
