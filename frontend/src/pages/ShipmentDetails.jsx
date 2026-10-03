@@ -1,129 +1,150 @@
-import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
+import { useState } from "react";
 
-import RiskBadge from "../components/RiskBadge";
-import Loading from "../components/Loading";
-import ErrorMessage from "../components/ErrorMessage";
-
-import {
-  getShipment,
-  getPrediction,
-} from "../services/api";
+import Layout from "../components/Layout";
+import { shipments, alternatives } from "../data/mockData";
 
 function ShipmentDetails() {
-  const { shipmentId } = useParams();
+  const { id } = useParams();
 
-  const [shipment, setShipment] = useState(null);
-  const [prediction, setPrediction] = useState(null);
+  const shipment = shipments.find(
+    (item) => item.shipment_id === id
+  );
 
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    async function loadData() {
-      try {
-        const shipmentData = await getShipment(shipmentId);
-        const predictionData = await getPrediction(shipmentId);
-
-        setShipment(shipmentData);
-        setPrediction(predictionData);
-      } catch (err) {
-        setError("Unable to load shipment details.");
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    loadData();
-  }, [shipmentId]);
-
-  if (loading) {
-    return <Loading />;
-  }
-
-  if (error) {
-    return <ErrorMessage message={error} />;
-  }
+  const [selectedAlternative, setSelectedAlternative] = useState("");
 
   if (!shipment) {
-    return <ErrorMessage message="Shipment not found." />;
+    return (
+      <Layout>
+        <div className="page">
+          <h1>Shipment Not Found</h1>
+        </div>
+      </Layout>
+    );
   }
 
+  const shipmentAlternatives = alternatives[id] || [];
+
   return (
-    <div>
-      <div className="page-header">
-        <div>
-          <h2>Shipment {shipment.shipment_id}</h2>
-          <p>
-            Review shipment information and predicted delay risk.
-          </p>
+    <Layout>
+      <div className="page">
+        <h1>Shipment Details</h1>
+
+        <div className="section-card">
+          <h2>{shipment.shipment_id}</h2>
+
+          <div className="detail-grid">
+            <div className="detail-item">
+              <strong>Product</strong>
+              {shipment.product}
+            </div>
+
+            <div className="detail-item">
+              <strong>Supplier</strong>
+              {shipment.supplier}
+            </div>
+
+            <div className="detail-item">
+              <strong>Origin</strong>
+              {shipment.origin}
+            </div>
+
+            <div className="detail-item">
+              <strong>Destination</strong>
+              {shipment.destination}
+            </div>
+
+            <div className="detail-item">
+              <strong>Planned Delivery</strong>
+              {shipment.planned_delivery_date}
+            </div>
+
+            <div className="detail-item">
+              <strong>Risk</strong>
+              <span
+                className={`risk risk-${shipment.risk_level.toLowerCase()}`}
+              >
+                {shipment.risk_level}
+              </span>
+            </div>
+          </div>
         </div>
 
-        <Link
-          to={`/shipments/${shipment.shipment_id}/alternatives`}
-          className="primary-button"
-        >
-          View Alternatives
-        </Link>
-      </div>
-
-      <div className="details-grid">
-        <div className="detail-card">
-          <h3>Shipment Information</h3>
-
-          <div className="detail-row">
-            <span>Shipment ID</span>
-            <strong>{shipment.shipment_id}</strong>
-          </div>
-
-          <div className="detail-row">
-            <span>Origin</span>
-            <strong>{shipment.origin}</strong>
-          </div>
-
-          <div className="detail-row">
-            <span>Destination</span>
-            <strong>{shipment.destination}</strong>
-          </div>
-
-          <div className="detail-row">
-            <span>Planned Delivery</span>
-            <strong>{shipment.planned_delivery_date}</strong>
-          </div>
-        </div>
-
-        <div className="detail-card">
-          <h3>Prediction</h3>
-
-          <div className="prediction-value">
-            <RiskBadge
-              risk={
-                prediction?.risk_level ||
-                shipment.risk_level
-              }
-            />
-          </div>
+        <div className="section-card">
+          <h2>Prediction</h2>
 
           <p>
-            Predicted delay probability:
+            Estimated delay probability:
+            <strong>
+              {" "}
+              {(shipment.delay_probability * 100).toFixed(0)}%
+            </strong>
           </p>
 
-          <h2>
-            {(
-              (prediction?.delay_probability ??
-                shipment.delay_probability) * 100
-            ).toFixed(0)}
-            %
-          </h2>
+          <p>
+            Current risk category:
+            <strong> {shipment.risk_level}</strong>
+          </p>
 
-          <p className="muted">
-            This risk result is based on the current
-            prediction response. Replace mock values with
-            the actual model response during integration.
+          <p>
+            This is currently a prototype prediction and should be replaced
+            with the team's actual model output.
           </p>
         </div>
+
+        <div className="section-card">
+          <h2>Suggested Alternatives</h2>
+
+          {shipmentAlternatives.length === 0 ? (
+            <p>No feasible alternative found.</p>
+          ) : (
+            shipmentAlternatives.map((alternative) => (
+              <div
+                className={`alternative ${
+                  selectedAlternative === alternative.alternative_id
+                    ? "selected"
+                    : ""
+                }`}
+                key={alternative.alternative_id}
+              >
+                <label>
+                  <input
+                    type="radio"
+                    name="alternative"
+                    value={alternative.alternative_id}
+                    checked={
+                      selectedAlternative === alternative.alternative_id
+                    }
+                    onChange={() =>
+                      setSelectedAlternative(
+                        alternative.alternative_id
+                      )
+                    }
+                  />
+
+                  <div>
+                    <strong>{alternative.action}</strong>
+
+                    <div>
+                      Estimated time: {alternative.estimated_time}
+                    </div>
+
+                    <div>
+                      Estimated cost: ₹
+                      {alternative.estimated_cost.toLocaleString()}
+                    </div>
+                  </div>
+                </label>
+              </div>
+            ))
+          )}
+
+          <button className="primary-btn">
+            Save Decision
+          </button>
+        </div>
       </div>
-    </div>
+    </Layout>
   );
 }
 
