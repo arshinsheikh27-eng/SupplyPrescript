@@ -1,8 +1,24 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, Helvetica, sans-serif;
+  background: #f4f7fb;
+  color: #1f2937;
+}
+
 .app {
   display: flex;
   min-height: 100vh;
   background: #f4f7fb;
 }
+
+
+/* =========================
+   SIDEBAR
+========================= */
 
 .sidebar {
   width: 230px;
@@ -10,14 +26,18 @@
   background: #0d2947;
   color: white;
   padding: 20px 15px;
+
   display: flex;
   flex-direction: column;
+
+  flex-shrink: 0;
 }
 
 .logo {
   display: flex;
   align-items: center;
   gap: 8px;
+
   font-weight: bold;
   margin-bottom: 35px;
 }
@@ -30,11 +50,20 @@
   display: flex;
   align-items: center;
   gap: 10px;
+
   color: #d9e4ee;
   text-decoration: none;
+
   padding: 12px;
   border-radius: 7px;
   margin-bottom: 5px;
+
+  transition: 0.2s ease;
+}
+
+.nav-item:hover {
+  background: #123b63;
+  color: white;
 }
 
 .nav-item.active {
@@ -46,53 +75,94 @@
   margin-top: auto;
 }
 
+
+/* =========================
+   MAIN CONTENT
+========================= */
+
 .main-content {
   flex: 1;
+  min-width: 0;
   padding: 25px;
 }
+
+
+/* =========================
+   HEADER
+========================= */
 
 .header {
   display: flex;
   justify-content: space-between;
+  align-items: center;
+
   margin-bottom: 25px;
 }
 
 .header h1 {
-  margin-bottom: 5px;
+  margin: 0 0 5px;
+  font-size: 26px;
 }
 
 .header p {
+  margin: 0;
   color: #728096;
+  font-size: 14px;
 }
+
+
+/* =========================
+   STATISTICS
+========================= */
 
 .stats-grid {
   display: grid;
+
   grid-template-columns: repeat(4, 1fr);
+
   gap: 15px;
 }
 
 .stat-card {
   background: white;
+
   padding: 18px;
+
   border-radius: 9px;
   border: 1px solid #e3eaf1;
+
   display: flex;
   justify-content: space-between;
   align-items: center;
+
+  min-height: 100px;
+
+  transition: 0.2s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
 .stat-card p {
+  margin: 0;
   color: #728096;
   font-size: 12px;
 }
 
 .stat-card h2 {
-  margin-top: 8px;
+  margin: 8px 0 0;
+  font-size: 24px;
 }
 
 .stat-icon {
   padding: 12px;
   border-radius: 50%;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .blue {
@@ -113,4 +183,276 @@
 .purple {
   background: #eeeaff;
   color: #7055d6;
+}
+
+
+/* =========================
+   DASHBOARD PANELS
+========================= */
+
+.dashboard-grid {
+  display: grid;
+
+  grid-template-columns: 2fr 1fr;
+
+  gap: 18px;
+
+  margin-top: 18px;
+}
+
+.charts-grid {
+  display: grid;
+
+  grid-template-columns: 1.5fr 1fr;
+
+  gap: 18px;
+
+  margin-top: 18px;
+}
+
+.panel {
+  background: white;
+
+  border: 1px solid #e3eaf1;
+  border-radius: 9px;
+
+  padding: 18px;
+
+  min-width: 0;
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  margin-bottom: 15px;
+}
+
+.panel-header h2,
+.panel-header h3 {
+  margin: 0;
+}
+
+
+/* =========================
+   TABLE
+========================= */
+
+.table-container {
+  width: 100%;
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  padding: 11px 8px;
+
+  text-align: left;
+
+  border-bottom: 1px solid #edf1f5;
+
+  font-size: 12px;
+}
+
+th {
+  color: #728096;
+  font-weight: 600;
+}
+
+td {
+  color: #374151;
+}
+
+tbody tr:hover {
+  background: #f8fafc;
+}
+
+
+/* =========================
+   RISK LABELS
+========================= */
+
+.risk {
+  display: inline-block;
+
+  padding: 4px 8px;
+
+  border-radius: 20px;
+
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.risk.high {
+  background: #ffe7e7;
+  color: #df3636;
+}
+
+.risk.medium {
+  background: #fff2d9;
+  color: #c67a00;
+}
+
+.risk.low {
+  background: #e1f8ed;
+  color: #16895c;
+}
+
+
+/* =========================
+   ALTERNATIVES
+========================= */
+
+.alternative {
+  display: flex;
+  align-items: flex-start;
+
+  gap: 10px;
+
+  margin-top: 15px;
+
+  padding: 10px;
+
+  border-radius: 7px;
+
+  cursor: pointer;
+
+  transition: 0.2s ease;
+}
+
+.alternative:hover {
+  background: #f4f8fc;
+}
+
+.alternative p {
+  color: #7a8797;
+
+  font-size: 11px;
+
+  margin: 4px 0 0;
+}
+
+
+/* =========================
+   SAVE BUTTON
+========================= */
+
+.save-button {
+  width: 100%;
+
+  margin-top: 18px;
+
+  padding: 10px;
+
+  border: none;
+  border-radius: 6px;
+
+  background: #1684d8;
+
+  color: white;
+
+  font-size: 13px;
+  font-weight: 600;
+
+  cursor: pointer;
+
+  transition: 0.2s ease;
+}
+
+.save-button:hover {
+  background: #0f73bd;
+}
+
+
+/* =========================
+   RESPONSIVE DESIGN
+========================= */
+
+/* Tablets */
+
+@media (max-width: 1100px) {
+
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .dashboard-grid,
+  .charts-grid {
+    grid-template-columns: 1fr;
+  }
+
+}
+
+
+/* Smaller tablets */
+
+@media (max-width: 800px) {
+
+  .sidebar {
+    width: 190px;
+  }
+
+  .main-content {
+    padding: 18px;
+  }
+
+  .header h1 {
+    font-size: 22px;
+  }
+
+}
+
+
+/* Mobile */
+
+@media (max-width: 600px) {
+
+  .app {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    width: 100%;
+    min-height: auto;
+
+    padding: 12px;
+  }
+
+  .logo {
+    margin-bottom: 15px;
+  }
+
+  .sidebar-bottom {
+    margin-top: 10px;
+  }
+
+  .main-content {
+    padding: 15px;
+  }
+
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-grid,
+  .charts-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .panel {
+    padding: 14px;
+  }
+
 }
