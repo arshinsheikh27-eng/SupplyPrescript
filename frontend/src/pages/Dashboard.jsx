@@ -1,102 +1,110 @@
-import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-
-import StatCard from "../components/StatCard";
-import ShipmentTable from "../components/ShipmentTable";
-import Loading from "../components/Loading";
-import ErrorMessage from "../components/ErrorMessage";
-
-import { getShipments } from "../services/api";
+import Layout from "../components/Layout";
+import { shipments } from "../data/mockData";
 
 function Dashboard() {
-  const [shipments, setShipments] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    async function loadShipments() {
-      try {
-        const data = await getShipments();
-        setShipments(data);
-      } catch (err) {
-        setError("Unable to load shipment data.");
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    loadShipments();
-  }, []);
+  const total = shipments.length;
 
   const highRisk = shipments.filter(
     (shipment) => shipment.risk_level === "High"
   ).length;
 
-  const mediumRisk = shipments.filter(
-    (shipment) => shipment.risk_level === "Medium"
-  ).length;
-
-  const lowRisk = shipments.filter(
+  const onTime = shipments.filter(
     (shipment) => shipment.risk_level === "Low"
   ).length;
 
   return (
-    <div>
-      <div className="page-header">
-        <div>
-          <h2>Dashboard</h2>
-          <p>
-            Monitor shipment delay risk and review possible actions.
-          </p>
-        </div>
+    <Layout>
+      <div className="page">
+        <h1 className="page-title">Welcome, Team!</h1>
+        <p className="page-subtitle">
+          Here's the latest shipment insights and recommendations.
+        </p>
 
-        <Link to="/shipments" className="primary-button">
-          View Shipments
-        </Link>
-      </div>
-
-      {loading && <Loading />}
-
-      {error && <ErrorMessage message={error} />}
-
-      {!loading && !error && (
-        <>
-          <div className="stats-grid">
-            <StatCard
-              title="Total Shipments"
-              value={shipments.length}
-              description="Current shipment records"
-            />
-
-            <StatCard
-              title="High Risk"
-              value={highRisk}
-              description="Shipments requiring attention"
-            />
-
-            <StatCard
-              title="Medium Risk"
-              value={mediumRisk}
-              description="Shipments to monitor"
-            />
-
-            <StatCard
-              title="Low Risk"
-              value={lowRisk}
-              description="Lower predicted risk"
-            />
+        <div className="cards">
+          <div className="card">
+            <div className="stat-label">Total Shipments</div>
+            <div className="stat-value">{total}</div>
           </div>
 
-          <section className="content-section">
-            <div className="section-header">
-              <h3>Shipment Overview</h3>
-            </div>
+          <div className="card">
+            <div className="stat-label">At Risk of Delay</div>
+            <div className="stat-value">{highRisk}</div>
+          </div>
 
-            <ShipmentTable shipments={shipments} />
-          </section>
-        </>
-      )}
-    </div>
+          <div className="card">
+            <div className="stat-label">On Time</div>
+            <div className="stat-value">{onTime}</div>
+          </div>
+
+          <div className="card">
+            <div className="stat-label">Avg. Delay (days)</div>
+            <div className="stat-value">2.3</div>
+          </div>
+        </div>
+
+        <div className="dashboard-grid">
+          <div className="section-card">
+            <h2>Recent Shipments</h2>
+
+            <div className="table-wrapper">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Shipment ID</th>
+                    <th>Product</th>
+                    <th>Supplier</th>
+                    <th>Risk</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {shipments.map((shipment) => (
+                    <tr key={shipment.shipment_id}>
+                      <td>{shipment.shipment_id}</td>
+                      <td>{shipment.product}</td>
+                      <td>{shipment.supplier}</td>
+
+                      <td>
+                        <span
+                          className={`risk risk-${shipment.risk_level.toLowerCase()}`}
+                        >
+                          {shipment.risk_level}
+                        </span>
+                      </td>
+
+                      <td>{shipment.status}</td>
+
+                      <td>
+                        <Link to={`/shipments/${shipment.shipment_id}`}>
+                          <button className="view-btn">View</button>
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="section-card">
+            <h2>Suggested Alternatives</h2>
+
+            <p>
+              Select a shipment to inspect its possible alternatives.
+            </p>
+
+            <Link to="/shipments/SHP001">
+              <button className="primary-btn">
+                Open High-Risk Shipment
+              </button>
+            </Link>
+          </div>
+        </div>
+      </div>
+    </Layout>
   );
 }
 

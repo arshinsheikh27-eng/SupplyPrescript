@@ -1,0 +1,101 @@
+export const shipments = [
+  {
+    shipment_id: "SHP001",
+    product: "Microchip",
+    supplier: "Supplier A",
+    origin: "Hyderabad",
+    destination: "Mumbai",
+    planned_delivery_date: "2026-10-08",
+    delay_probability: 0.82,
+    risk_level: "High",
+    status: "Predict",
+  },
+  {
+    shipment_id: "SHP002",
+    product: "Battery",
+    supplier: "Supplier B",
+    origin: "Pune",
+    destination: "Delhi",
+    planned_delivery_date: "2026-10-09",
+    delay_probability: 0.25,
+    risk_level: "Low",
+    status: "On Time",
+  },
+  {
+    shipment_id: "SHP003",
+    product: "Display",
+    supplier: "Supplier C",
+    origin: "Chennai",
+    destination: "Bangalore",
+    planned_delivery_date: "2026-10-11",
+    delay_probability: 0.58,
+    risk_level: "Medium",
+    status: "Predict",
+  },
+  {
+    shipment_id: "SHP004",
+    product: "Processor",
+    supplier: "Supplier A",
+    origin: "Hyderabad",
+    destination: "Kolkata",
+    planned_delivery_date: "2026-10-12",
+    delay_probability: 0.76,
+    risk_level: "High",
+    status: "Predict",
+  },
+  {
+    shipment_id: "SHP005",
+    product: "Camera",
+    supplier: "Supplier D",
+    origin: "Mumbai",
+    destination: "Delhi",
+    planned_delivery_date: "2026-10-13",
+    delay_probability: 0.18,
+    risk_level: "Low",
+    status: "On Time",
+  },
+];
+
+export const alternatives = {
+  SHP001: [
+    {
+      alternative_id: "ALT001",
+      action: "Faster Shipping",
+      estimated_cost: 5200,
+      estimated_time: "2 days",
+      feasible: true,
+    },
+    {
+      alternative_id: "ALT002",
+      action: "Alternate Supplier",
+      estimated_cost: 5100,
+      estimated_time: "4 days",
+      feasible: true,
+    },
+    {
+      alternative_id: "ALT003",
+      action: "Adjust Launch Plan",
+      estimated_cost: 0,
+      estimated_time: "7 days",
+      feasible: true,
+    },
+  ],
+  SHP003: [
+    {
+      alternative_id: "ALT004",
+      action: "Faster Shipping",
+      estimated_cost: 4000,
+      estimated_time: "2 days",
+      feasible: true,
+    },
+    {
+      alternative_id: "ALT005",
+      action: "Alternate Supplier",
+      estimated_cost: 3500,
+      estimated_time: "3 days",
+      feasible: true,
+    },
+  ],
+};
+
+export const decisions = [];
