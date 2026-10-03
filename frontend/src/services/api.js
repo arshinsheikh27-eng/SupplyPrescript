@@ -1,115 +1,56 @@
 import axios from "axios";
-import {
-  shipments,
-  alternatives,
-  decisions,
-  outcomes,
-} from "./mockData";
 
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "";
+const API_URL =
+  import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 const api = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: API_URL,
   headers: {
     "Content-Type": "application/json",
   },
 });
 
-export async function getShipments() {
-  if (!API_BASE_URL) {
-    return shipments;
-  }
-
+export const getShipments = async () => {
   const response = await api.get("/shipments");
   return response.data;
-}
+};
 
-export async function getShipment(shipmentId) {
-  if (!API_BASE_URL) {
-    return shipments.find(
-      (shipment) => shipment.shipment_id === shipmentId
-    );
-  }
-
+export const getShipment = async (shipmentId) => {
   const response = await api.get(`/shipments/${shipmentId}`);
   return response.data;
-}
+};
 
-export async function getPrediction(shipmentId) {
-  if (!API_BASE_URL) {
-    const shipment = shipments.find(
-      (item) => item.shipment_id === shipmentId
-    );
-
-    return {
-      shipment_id: shipmentId,
-      delay_probability: shipment?.delay_probability ?? 0,
-      risk_level: shipment?.risk_level ?? "Unknown",
-    };
-  }
-
+export const getPrediction = async (shipmentId) => {
   const response = await api.get(
     `/shipments/${shipmentId}/prediction`
   );
 
   return response.data;
-}
+};
 
-export async function getAlternatives(shipmentId) {
-  if (!API_BASE_URL) {
-    return alternatives[shipmentId] || [];
-  }
-
+export const getAlternatives = async (shipmentId) => {
   const response = await api.get(
     `/shipments/${shipmentId}/alternatives`
   );
 
   return response.data;
-}
+};
 
-export async function saveDecision(
-  shipmentId,
-  selectedAlternative,
-  userNote = ""
-) {
-  if (!API_BASE_URL) {
-    return {
-      shipment_id: shipmentId,
-      selected_action: selectedAlternative,
-      decision_timestamp: new Date().toISOString(),
-      user_note: userNote,
-      status: "Saved",
-    };
-  }
-
+export const saveDecision = async (shipmentId, data) => {
   const response = await api.post(
     `/shipments/${shipmentId}/decisions`,
-    {
-      selected_action: selectedAlternative,
-      user_note: userNote,
-    }
+    data
   );
 
   return response.data;
-}
+};
 
-export async function getDecisions() {
-  if (!API_BASE_URL) {
-    return decisions;
-  }
+export const getDecisions = async (shipmentId) => {
+  const response = await api.get(
+    `/shipments/${shipmentId}/decisions`
+  );
 
-  const response = await api.get("/decisions");
   return response.data;
-}
-
-export async function getOutcomes() {
-  if (!API_BASE_URL) {
-    return outcomes;
-  }
-
-  const response = await api.get("/outcomes");
-  return response.data;
-}
+};
 
 export default api;
