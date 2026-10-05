@@ -143,6 +143,30 @@ def test_empty_selected_action():
     assert response.status_code == 422
 
 
+def test_whitespace_only_alternative_id():
+    response = client.post(
+        "/shipments/SHP001/decisions",
+        json={
+            "alternative_id": "   ",
+            "selected_action": "Use alternate carrier"
+        }
+    )
+
+    assert response.status_code == 422
+
+
+def test_whitespace_only_selected_action():
+    response = client.post(
+        "/shipments/SHP001/decisions",
+        json={
+            "alternative_id": "ALT001",
+            "selected_action": "   "
+        }
+    )
+
+    assert response.status_code == 422
+
+
 def test_selected_action_does_not_match_alternative():
     response = client.post(
         "/shipments/SHP001/decisions",

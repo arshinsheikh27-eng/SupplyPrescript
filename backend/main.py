@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from fastapi import FastAPI, Depends, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
 
 from database import SessionLocal
@@ -27,6 +27,14 @@ def get_db():
 class DecisionRequest(BaseModel):
     alternative_id: str = Field(min_length=1)
     selected_action: str = Field(min_length=1)
+
+    @field_validator("alternative_id", "selected_action")
+    @classmethod
+    def validate_not_blank(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("Field must not be blank")
+
+        return value
 
 
 @app.get("/")
