@@ -24,6 +24,24 @@ def test_get_shipments():
     assert data[0]["shipment_id"] == "SHP001"
 
 
+def test_get_shipments_response_fields():
+    response = client.get("/shipments")
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert isinstance(data, list)
+    assert len(data) >= 1
+
+    for shipment in data:
+        assert "shipment_id" in shipment
+        assert "origin" in shipment
+        assert "destination" in shipment
+        assert "planned_delivery_date" in shipment
+        assert "actual_delivery_date" in shipment
+
+
 def test_get_shipment():
     response = client.get("/shipments/SHP001")
 
@@ -34,6 +52,20 @@ def test_get_shipment():
     assert data["shipment_id"] == "SHP001"
     assert data["origin"] == "Bengaluru"
     assert data["destination"] == "Mumbai"
+
+
+def test_get_shipment_response_fields():
+    response = client.get("/shipments/SHP001")
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert "shipment_id" in data
+    assert "origin" in data
+    assert "destination" in data
+    assert "planned_delivery_date" in data
+    assert "actual_delivery_date" in data
 
 
 def test_get_prediction():
@@ -93,6 +125,13 @@ def test_get_decisions():
 
 def test_shipment_not_found():
     response = client.get("/shipments/SHP999")
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Shipment not found"
+
+
+def test_another_shipment_not_found():
+    response = client.get("/shipments/DOES_NOT_EXIST")
 
     assert response.status_code == 404
     assert response.json()["detail"] == "Shipment not found"
