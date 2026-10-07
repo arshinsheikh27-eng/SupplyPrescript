@@ -82,6 +82,51 @@ def test_get_prediction():
     assert data["risk_level"] == "High"
 
 
+def test_prediction_response_fields():
+    response = client.get("/shipments/SHP001/prediction")
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    expected_fields = {
+        "shipment_id",
+        "delay_days",
+        "delay_label",
+        "delay_probability",
+        "risk_level",
+    }
+
+    assert set(data.keys()) == expected_fields
+
+
+def test_prediction_probability_range():
+    response = client.get("/shipments/SHP001/prediction")
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert isinstance(data["delay_probability"], (int, float))
+    assert 0 <= data["delay_probability"] <= 1
+
+
+def test_prediction_values_have_expected_types():
+    response = client.get("/shipments/SHP001/prediction")
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert isinstance(data["shipment_id"], str)
+    assert isinstance(data["delay_days"], int)
+    assert isinstance(data["delay_label"], str)
+    assert isinstance(data["risk_level"], str)
+
+    assert data["delay_label"] != ""
+    assert data["risk_level"] != ""
+
+
 def test_get_alternatives():
     response = client.get("/shipments/SHP001/alternatives")
 
