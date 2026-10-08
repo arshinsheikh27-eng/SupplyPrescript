@@ -1,5 +1,11 @@
 import pandas as pd
 
+required_columns = [
+    "Order Id",
+    "predicted_risk",
+    "predicted_probability"
+]
+
 def recommend_action(order_id, late_delivery_risk, prediction_probability):
 
     if late_delivery_risk == 1 and prediction_probability > 0.90:
@@ -36,6 +42,15 @@ def recommend_action(order_id, late_delivery_risk, prediction_probability):
 
 
 df = pd.read_csv("data/final_test_predictions_threshold_040.csv")
+
+missing_columns = [
+    col for col in required_columns
+    if col not in df.columns
+]
+
+if missing_columns:
+    print("Missing required columns:", missing_columns)
+    exit()
 
 results = []
 
