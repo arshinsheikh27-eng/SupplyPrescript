@@ -279,3 +279,125 @@ def test_alternative_not_found():
     assert response.json()["detail"] == (
         "Alternative not found for this shipment"
     )
+
+
+def test_alternatives_response_fields():
+    response = client.get("/shipments/SHP001/alternatives")
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    expected_fields = {
+        "alternative_id",
+        "order_id",
+        "recommended_action",
+        "estimated_cost",
+        "recommendation_reason",
+    }
+
+    assert set(data.keys()) == expected_fields
+
+
+def test_alternatives_response_values():
+    response = client.get("/shipments/SHP001/alternatives")
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data["alternative_id"] == "REC-SHP001"
+    assert data["order_id"] == "SHP001"
+    assert data["recommended_action"] == "Alternate Supplier"
+    assert data["estimated_cost"] is None
+    assert isinstance(data["recommendation_reason"], str)
+    assert data["recommendation_reason"] != ""
+
+
+def test_alternatives_recommendation_is_persisted():
+    response = client.get("/shipments/SHP001/alternatives")
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data["alternative_id"] == "REC-SHP001"
+
+    response_again = client.get(
+        "/shipments/SHP001/alternatives"
+    )
+
+    assert response_again.status_code == 200
+
+    data_again = response_again.json()
+
+    assert data_again["alternative_id"] == "REC-SHP001"
+    assert data_again["recommended_action"] == data["recommended_action"]
+
+
+def test_alternatives_prediction_probability_out_of_range():
+    from database import SessionLocal
+    from models import Prediction
+
+    db = SessionLocal()
+
+    try:
+        prediction = (
+            db.query(Prediction)
+            .filter(Prediction.shipment_id == "SHP001")
+            .first()
+        )
+
+        original_probability = prediction.delay_probability
+
+        prediction.delay_probability = 1.5
+        db.commit()
+
+        response = client.get(
+            "/shipments/SHP001/alternatives"
+        )
+
+        assert response.status_code == 400
+        assert response.json()["detail"] == (
+            "prediction_probability must be between 0 and 1"
+        )
+
+        prediction.delay_probability = original_probability
+        db.commit()
+
+    finally:
+        db.close()
+
+
+def test_alternatives_negative_probability():
+    from database import SessionLocal
+    from models import Prediction
+
+    db = SessionLocal()
+
+    try:
+        prediction = (
+            db.query(Prediction)
+            .filter(Prediction.shipment_id == "SHP001")
+            .first()
+        )
+
+        original_probability = prediction.delay_probability
+
+        prediction.delay_probability = -0.1
+        db.commit()
+
+        response = client.get(
+            "/shipments/SHP001/alternatives"
+        )
+
+        assert response.status_code == 400
+        assert response.json()["detail"] == (
+            "prediction_probability must be between 0 and 1"
+        )
+
+        prediction.delay_probability = original_probability
+        db.commit()
+
+    finally:
+        db.close()
