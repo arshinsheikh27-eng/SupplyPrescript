@@ -15,21 +15,27 @@ from schemas import (
 from optimization.optimization_model import generate_recommendation
 
 
+# --------------------------------------------------
+# FASTAPI APPLICATION
+# --------------------------------------------------
+
 app = FastAPI(
     title="SupplyPrescript Backend API",
     description=(
-        "Backend API for shipment delay prediction "
-        "and decision support"
+        "Backend API for shipment delay prediction and decision support. "
+        "The API provides shipment details, prediction results, "
+        "recommendations, and persistent decision history."
     ),
     version="1.0.0",
 )
 
 
 # --------------------------------------------------
-# Database dependency
+# DATABASE SESSION
 # --------------------------------------------------
 
 def get_db():
+    """Create and close a database session for each request."""
     db = SessionLocal()
 
     try:
@@ -39,42 +45,44 @@ def get_db():
 
 
 # --------------------------------------------------
-# Home endpoint
+# HEALTH CHECK
 # --------------------------------------------------
 
-@app.get("/")
+@app.get(
+    "/",
+    summary="Check backend status",
+    description="Returns a message confirming that the backend is running.",
+    tags=["Health"],
+)
 def home():
-    return {
-        "message": "SupplyPrescript Backend is running"
-    }
+    return {"message": "SupplyPrescript Backend is running"}
 
 
 # --------------------------------------------------
-# Shipment endpoints
+# SHIPMENT ENDPOINTS
 # --------------------------------------------------
 
 @app.get(
     "/shipments",
     response_model=list[ShipmentResponse],
+    summary="List shipments",
+    description="Returns the shipment records currently stored in the database.",
+    tags=["Shipments"],
 )
 def get_shipments(db: Session = Depends(get_db)):
     shipments = db.query(Shipment).all()
-
-    return [
-        {
-            "shipment_id": shipment.shipment_id,
-            "origin": shipment.origin,
-            "destination": shipment.destination,
-            "planned_delivery_date": shipment.planned_delivery_date,
-            "actual_delivery_date": shipment.actual_delivery_date,
-        }
-        for shipment in shipments
-    ]
+    return shipments
 
 
 @app.get(
     "/shipments/{shipment_id}",
     response_model=ShipmentResponse,
+    summary="Get shipment details",
+    description="Returns details for the requested shipment ID.",
+    responses={
+        404: {"description": "Shipment not found."},
+    },
+    tags=["Shipments"],
 )
 def get_shipment(
     shipment_id: str,
@@ -86,42 +94,43 @@ def get_shipment(
         .first()
     )
 
-    if shipment is None:
+    if not shipment:
         raise HTTPException(
             status_code=404,
             detail="Shipment not found",
         )
 
-    return {
-        "shipment_id": shipment.shipment_id,
-        "origin": shipment.origin,
-        "destination": shipment.destination,
-        "planned_delivery_date": shipment.planned_delivery_date,
-        "actual_delivery_date": shipment.actual_delivery_date,
-    }
+    return shipment
 
 
 # --------------------------------------------------
-# Prediction endpoint
+# PREDICTION ENDPOINT
 # --------------------------------------------------
 
 @app.get(
     "/shipments/{shipment_id}/prediction",
     response_model=PredictionResponse,
+    summary="Get shipment prediction",
+    description=(
+        "Returns the stored delay prediction, probability, "
+        "and risk category for a shipment."
+    ),
+    responses={
+        404: {"description": "Prediction not found."},
+    },
+    tags=["Predictions"],
 )
 def get_prediction(
     shipment_id: str,
     db: Session = Depends(get_db),
 ):
-    # Preserve the existing API behavior:
-    # return "Prediction not found" when no prediction exists.
     prediction = (
         db.query(Prediction)
         .filter(Prediction.shipment_id == shipment_id)
         .first()
     )
 
-    if prediction is None:
+    if not prediction:
         raise HTTPException(
             status_code=404,
             detail="Prediction not found",
@@ -137,36 +146,55 @@ def get_prediction(
 
 
 # --------------------------------------------------
-# Alternatives and recommendation endpoint
+# RECOMMENDATION ENDPOINT
 # --------------------------------------------------
 
 @app.get(
     "/shipments/{shipment_id}/alternatives",
     response_model=AlternativeResponse,
+    summary="Get shipment recommendation",
+    description=(
+        "Generates a recommendation using the shipment's prediction "
+        "and stores or updates the generated recommendation."
+    ),
+    responses={
+        400: {
+            "description": (
+                "The prediction contains invalid data for "
+                "recommendation generation."
+            ),
+        },
+        404: {
+            "description": "Shipment or prediction not found.",
+        },
+    },
+    tags=["Recommendations"],
 )
 def get_alternatives(
     shipment_id: str,
     db: Session = Depends(get_db),
 ):
+    # Verify that the shipment exists.
     shipment = (
         db.query(Shipment)
         .filter(Shipment.shipment_id == shipment_id)
         .first()
     )
 
-    if shipment is None:
+    if not shipment:
         raise HTTPException(
             status_code=404,
             detail="Shipment not found",
         )
 
+    # Retrieve the prediction.
     prediction = (
         db.query(Prediction)
         .filter(Prediction.shipment_id == shipment_id)
         .first()
     )
 
-    if prediction is None:
+    if not prediction:
         raise HTTPException(
             status_code=404,
             detail="Prediction not found",
@@ -178,25 +206,25 @@ def get_alternatives(
             detail="Prediction probability is missing",
         )
 
-    # V1 risk mapping.
-    if prediction.risk_level == "No Risk":
-        late_delivery_risk = 0
-    else:
-        late_delivery_risk = 1
+    # Convert the risk category into the expected input.
+    late_delivery_risk = (
+        0 if prediction.risk_level == "No Risk" else 1
+    )
 
+    # Generate a recommendation.
     try:
         recommendation = generate_recommendation(
-            order_id=shipment.shipment_id,
+            order_id=shipment_id,
             late_delivery_risk=late_delivery_risk,
             prediction_probability=prediction.delay_probability,
         )
-    except ValueError as error:
+    except ValueError as exc:
         raise HTTPException(
             status_code=400,
-            detail=str(error),
-        ) from error
+            detail=str(exc),
+        )
 
-    # Store the generated recommendation using a stable ID.
+    # Use a stable ID to prevent duplicate generated recommendations.
     alternative_id = f"REC-{shipment_id}"
 
     alternative = (
@@ -205,11 +233,19 @@ def get_alternatives(
         .first()
     )
 
-    if alternative is None:
+    if alternative:
+        alternative.estimated_cost = recommendation.get(
+            "estimated_cost"
+        )
+        alternative.action = recommendation["recommended_action"]
+        alternative.recommendation_reason = recommendation[
+            "recommendation_reason"
+        ]
+    else:
         alternative = Alternative(
             alternative_id=alternative_id,
             shipment_id=shipment_id,
-            estimated_cost=recommendation["estimated_cost"],
+            estimated_cost=recommendation.get("estimated_cost"),
             estimated_time=None,
             action=recommendation["recommended_action"],
             recommendation_reason=recommendation[
@@ -218,113 +254,136 @@ def get_alternatives(
         )
 
         db.add(alternative)
-    else:
-        alternative.estimated_cost = recommendation["estimated_cost"]
-        alternative.action = recommendation["recommended_action"]
-        alternative.recommendation_reason = recommendation[
-            "recommendation_reason"
-        ]
 
     db.commit()
     db.refresh(alternative)
 
     return {
         "alternative_id": alternative.alternative_id,
-        "order_id": recommendation["order_id"],
-        "recommended_action": recommendation["recommended_action"],
-        "estimated_cost": recommendation["estimated_cost"],
-        "recommendation_reason": recommendation[
-            "recommendation_reason"
-        ],
+        "order_id": shipment_id,
+        "recommended_action": alternative.action,
+        "estimated_cost": alternative.estimated_cost,
+        "recommendation_reason": alternative.recommendation_reason,
     }
 
 
 # --------------------------------------------------
-# Save decision endpoint
+# SAVE DECISION ENDPOINT
 # --------------------------------------------------
 
 @app.post(
     "/shipments/{shipment_id}/decisions",
     response_model=DecisionResponse,
+    summary="Save shipment decision",
+    description=(
+        "Validates the selected alternative and action, "
+        "then saves the decision with a timestamp."
+    ),
+    responses={
+        400: {
+            "description": (
+                "The selected action does not match the alternative."
+            ),
+        },
+        404: {
+            "description": (
+                "Shipment or selected alternative not found."
+            ),
+        },
+        422: {
+            "description": "The request body failed validation.",
+        },
+    },
+    tags=["Decisions"],
 )
 def save_decision(
     shipment_id: str,
-    decision_request: DecisionRequestSchema,
+    decision_data: DecisionRequestSchema,
     db: Session = Depends(get_db),
 ):
+    # Verify that the shipment exists.
     shipment = (
         db.query(Shipment)
         .filter(Shipment.shipment_id == shipment_id)
         .first()
     )
 
-    if shipment is None:
+    if not shipment:
         raise HTTPException(
             status_code=404,
             detail="Shipment not found",
         )
 
+    # Verify that the alternative belongs to this shipment.
     alternative = (
         db.query(Alternative)
         .filter(
             Alternative.alternative_id
-            == decision_request.alternative_id,
+            == decision_data.alternative_id,
             Alternative.shipment_id == shipment_id,
         )
         .first()
     )
 
-    if alternative is None:
+    if not alternative:
         raise HTTPException(
             status_code=404,
             detail="Alternative not found for this shipment",
         )
 
-    if alternative.action != decision_request.selected_action:
+    # Validate that the selected action matches the alternative.
+    if decision_data.selected_action != alternative.action:
         raise HTTPException(
             status_code=400,
             detail="Selected action does not match the alternative",
         )
 
+    # Save the decision with its timestamp.
     decision = Decision(
         shipment_id=shipment_id,
-        alternative_id=decision_request.alternative_id,
-        selected_action=decision_request.selected_action,
-        decision_timestamp=datetime.now(),
+        alternative_id=decision_data.alternative_id,
+        selected_action=decision_data.selected_action,
+        decision_timestamp=datetime.utcnow(),
     )
 
     db.add(decision)
     db.commit()
     db.refresh(decision)
 
-    return {
-        "decision_id": decision.decision_id,
-        "shipment_id": decision.shipment_id,
-        "alternative_id": decision.alternative_id,
-        "selected_action": decision.selected_action,
-        "decision_timestamp": decision.decision_timestamp,
-    }
+    return decision
 
 
 # --------------------------------------------------
-# Retrieve decisions endpoint
+# RETRIEVE DECISION HISTORY
 # --------------------------------------------------
 
 @app.get(
     "/shipments/{shipment_id}/decisions",
     response_model=list[DecisionResponse],
+    summary="Get shipment decision history",
+    description=(
+        "Returns saved decisions associated with the requested shipment. "
+        "Returns an empty list if the shipment has no saved decisions."
+    ),
+    responses={
+        404: {
+            "description": "Shipment not found.",
+        },
+    },
+    tags=["Decisions"],
 )
 def get_decisions(
     shipment_id: str,
     db: Session = Depends(get_db),
 ):
+    # Verify that the shipment exists.
     shipment = (
         db.query(Shipment)
         .filter(Shipment.shipment_id == shipment_id)
         .first()
     )
 
-    if shipment is None:
+    if not shipment:
         raise HTTPException(
             status_code=404,
             detail="Shipment not found",
@@ -336,13 +395,4 @@ def get_decisions(
         .all()
     )
 
-    return [
-        {
-            "decision_id": decision.decision_id,
-            "shipment_id": decision.shipment_id,
-            "alternative_id": decision.alternative_id,
-            "selected_action": decision.selected_action,
-            "decision_timestamp": decision.decision_timestamp,
-        }
-        for decision in decisions
-    ]
+    return decisions
