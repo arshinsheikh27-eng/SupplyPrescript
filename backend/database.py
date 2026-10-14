@@ -1,17 +1,30 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 
-DATABASE_URL = "sqlite:///./supplyprescript.db"
+from config import DATABASE_URL
+
+
+# Create the database engine.
+engine_options = {}
+
+if DATABASE_URL.startswith("sqlite"):
+    engine_options["connect_args"] = {
+        "check_same_thread": False
+    }
 
 engine = create_engine(
     DATABASE_URL,
-    connect_args={"check_same_thread": False}
+    **engine_options,
 )
 
+
+# Create the database session factory.
 SessionLocal = sessionmaker(
     autocommit=False,
     autoflush=False,
-    bind=engine
+    bind=engine,
 )
 
+
+# Base class for SQLAlchemy models.
 Base = declarative_base()
