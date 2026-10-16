@@ -1,11 +1,35 @@
+from typing import TypedDict
+
+
+class RecommendationResult(TypedDict):
+    """Structure returned by the recommendation engine."""
+
+    order_id: str
+    recommended_action: str
+    estimated_cost: None
+    recommendation_reason: str
+
+
 def generate_recommendation(
     order_id: str,
     late_delivery_risk: int,
-    prediction_probability: float
-):
+    prediction_probability: float,
+) -> RecommendationResult:
     """
-    Generate a V1 shipment recommendation based on
-    the team's confirmed optimization rules.
+    Generate a V1 shipment recommendation using the team's
+    confirmed optimization rules.
+
+    Args:
+        order_id: Identifier of the shipment or order.
+        late_delivery_risk: Risk indicator; must be 0 or 1.
+        prediction_probability: Probability between 0 and 1.
+
+    Returns:
+        A recommendation dictionary containing the order ID,
+        recommended action, estimated cost, and explanation.
+
+    Raises:
+        ValueError: If the risk indicator or probability is invalid.
     """
 
     if late_delivery_risk not in (0, 1):
@@ -18,7 +42,9 @@ def generate_recommendation(
 
     if late_delivery_risk == 0:
         recommended_action = "No Action"
-        recommendation_reason = "Shipment has no late delivery risk."
+        recommendation_reason = (
+            "Shipment has no late delivery risk."
+        )
 
     elif 0.50 <= prediction_probability <= 0.75:
         recommended_action = "Monitor Shipment"
