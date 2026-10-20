@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from fastapi import FastAPI, Depends, HTTPException
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from database import SessionLocal
@@ -70,8 +71,7 @@ def home():
     tags=["Shipments"],
 )
 def get_shipments(db: Session = Depends(get_db)):
-    shipments = db.query(Shipment).all()
-    return shipments
+    return db.query(Shipment).all()
 
 
 @app.get(
@@ -79,9 +79,7 @@ def get_shipments(db: Session = Depends(get_db)):
     response_model=ShipmentResponse,
     summary="Get shipment details",
     description="Returns details for the requested shipment ID.",
-    responses={
-        404: {"description": "Shipment not found."},
-    },
+    responses={404: {"description": "Shipment not found."}},
     tags=["Shipments"],
 )
 def get_shipment(
@@ -115,9 +113,7 @@ def get_shipment(
         "Returns the stored delay prediction, probability, "
         "and risk category for a shipment."
     ),
-    responses={
-        404: {"description": "Prediction not found."},
-    },
+    responses={404: {"description": "Prediction not found."}},
     tags=["Predictions"],
 )
 def get_prediction(
@@ -164,9 +160,8 @@ def get_prediction(
                 "recommendation generation."
             ),
         },
-        404: {
-            "description": "Shipment or prediction not found.",
-        },
+        404: {"description": "Shipment or prediction not found."},
+        500: {"description": "Failed to save recommendation."},
     },
     tags=["Recommendations"],
 )
@@ -207,9 +202,7 @@ def get_alternatives(
         )
 
     # Convert the risk category into the expected input.
-    late_delivery_risk = (
-        0 if prediction.risk_level == "No Risk" else 1
-    )
+    late_delivery_risk = 0 if prediction.risk_level == "No Risk" else 1
 
     # Generate a recommendation.
     try:
@@ -222,7 +215,7 @@ def get_alternatives(
         raise HTTPException(
             status_code=400,
             detail=str(exc),
-        )
+        ) from exc
 
     # Use a stable ID to prevent duplicate generated recommendations.
     alternative_id = f"REC-{shipment_id}"
@@ -234,9 +227,7 @@ def get_alternatives(
     )
 
     if alternative:
-        alternative.estimated_cost = recommendation.get(
-            "estimated_cost"
-        )
+        alternative.estimated_cost = recommendation.get("estimated_cost")
         alternative.action = recommendation["recommended_action"]
         alternative.recommendation_reason = recommendation[
             "recommendation_reason"
@@ -248,15 +239,19 @@ def get_alternatives(
             estimated_cost=recommendation.get("estimated_cost"),
             estimated_time=None,
             action=recommendation["recommended_action"],
-            recommendation_reason=recommendation[
-                "recommendation_reason"
-            ],
+            recommendation_reason=recommendation["recommendation_reason"],
         )
-
         db.add(alternative)
 
-    db.commit()
-    db.refresh(alternative)
+    try:
+        db.commit()
+        db.refresh(alternative)
+    except SQLAlchemyError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to save recommendation",
+        ) from exc
 
     return {
         "alternative_id": alternative.alternative_id,
@@ -290,9 +285,8 @@ def get_alternatives(
                 "Shipment or selected alternative not found."
             ),
         },
-        422: {
-            "description": "The request body failed validation.",
-        },
+        422: {"description": "The request body failed validation."},
+        500: {"description": "Failed to save decision."},
     },
     tags=["Decisions"],
 )
@@ -318,8 +312,7 @@ def save_decision(
     alternative = (
         db.query(Alternative)
         .filter(
-            Alternative.alternative_id
-            == decision_data.alternative_id,
+            Alternative.alternative_id == decision_data.alternative_id,
             Alternative.shipment_id == shipment_id,
         )
         .first()
@@ -345,10 +338,17 @@ def save_decision(
         selected_action=decision_data.selected_action,
         decision_timestamp=datetime.utcnow(),
     )
-
     db.add(decision)
-    db.commit()
-    db.refresh(decision)
+
+    try:
+        db.commit()
+        db.refresh(decision)
+    except SQLAlchemyError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to save decision",
+        ) from exc
 
     return decision
 
@@ -365,11 +365,7 @@ def save_decision(
         "Returns saved decisions associated with the requested shipment. "
         "Returns an empty list if the shipment has no saved decisions."
     ),
-    responses={
-        404: {
-            "description": "Shipment not found.",
-        },
-    },
+    responses={404: {"description": "Shipment not found."}},
     tags=["Decisions"],
 )
 def get_decisions(
@@ -389,10 +385,8 @@ def get_decisions(
             detail="Shipment not found",
         )
 
-    decisions = (
+    return (
         db.query(Decision)
         .filter(Decision.shipment_id == shipment_id)
         .all()
     )
-
-    return decisions

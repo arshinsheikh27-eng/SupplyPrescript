@@ -12,7 +12,6 @@ client = TestClient(app)
 
 def test_home():
     response = client.get("/")
-
     assert response.status_code == 200
     assert response.json()["message"] == "SupplyPrescript Backend is running"
 
@@ -23,25 +22,18 @@ def test_home():
 
 def test_get_shipments():
     response = client.get("/shipments")
-
     assert response.status_code == 200
-
     data = response.json()
-
     assert len(data) >= 1
     assert any(shipment["shipment_id"] == "SHP001" for shipment in data)
 
 
 def test_get_shipments_response_fields():
     response = client.get("/shipments")
-
     assert response.status_code == 200
-
     data = response.json()
-
     assert isinstance(data, list)
     assert len(data) >= 1
-
     for shipment in data:
         assert "shipment_id" in shipment
         assert "origin" in shipment
@@ -52,11 +44,8 @@ def test_get_shipments_response_fields():
 
 def test_get_shipment():
     response = client.get("/shipments/SHP001")
-
     assert response.status_code == 200
-
     data = response.json()
-
     assert data["shipment_id"] == "SHP001"
     assert data["origin"] == "Bengaluru"
     assert data["destination"] == "Mumbai"
@@ -64,11 +53,8 @@ def test_get_shipment():
 
 def test_get_shipment_response_fields():
     response = client.get("/shipments/SHP001")
-
     assert response.status_code == 200
-
     data = response.json()
-
     assert "shipment_id" in data
     assert "origin" in data
     assert "destination" in data
@@ -82,11 +68,8 @@ def test_get_shipment_response_fields():
 
 def test_get_prediction():
     response = client.get("/shipments/SHP001/prediction")
-
     assert response.status_code == 200
-
     data = response.json()
-
     assert data["shipment_id"] == "SHP001"
     assert data["delay_days"] == 2
     assert data["delay_label"] == "Delayed"
@@ -96,45 +79,31 @@ def test_get_prediction():
 
 def test_prediction_response_fields():
     response = client.get("/shipments/SHP001/prediction")
-
     assert response.status_code == 200
-
     data = response.json()
-
     expected_fields = {
-        "shipment_id",
-        "delay_days",
-        "delay_label",
-        "delay_probability",
-        "risk_level",
+        "shipment_id", "delay_days", "delay_label",
+        "delay_probability", "risk_level",
     }
-
     assert set(data.keys()) == expected_fields
 
 
 def test_prediction_probability_range():
     response = client.get("/shipments/SHP001/prediction")
-
     assert response.status_code == 200
-
     data = response.json()
-
     assert isinstance(data["delay_probability"], (int, float))
     assert 0 <= data["delay_probability"] <= 1
 
 
 def test_prediction_values_have_expected_types():
     response = client.get("/shipments/SHP001/prediction")
-
     assert response.status_code == 200
-
     data = response.json()
-
     assert isinstance(data["shipment_id"], str)
     assert isinstance(data["delay_days"], int)
     assert isinstance(data["delay_label"], str)
     assert isinstance(data["risk_level"], str)
-
     assert data["delay_label"] != ""
     assert data["risk_level"] != ""
 
@@ -145,11 +114,8 @@ def test_prediction_values_have_expected_types():
 
 def test_get_alternatives():
     response = client.get("/shipments/SHP001/alternatives")
-
     assert response.status_code == 200
-
     data = response.json()
-
     assert data["order_id"] == "SHP001"
     assert data["recommended_action"] == "Alternate Supplier"
     assert data["estimated_cost"] is None
@@ -158,29 +124,19 @@ def test_get_alternatives():
 
 def test_alternatives_response_fields():
     response = client.get("/shipments/SHP001/alternatives")
-
     assert response.status_code == 200
-
     data = response.json()
-
     expected_fields = {
-        "alternative_id",
-        "order_id",
-        "recommended_action",
-        "estimated_cost",
-        "recommendation_reason",
+        "alternative_id", "order_id", "recommended_action",
+        "estimated_cost", "recommendation_reason",
     }
-
     assert set(data.keys()) == expected_fields
 
 
 def test_alternatives_response_values():
     response = client.get("/shipments/SHP001/alternatives")
-
     assert response.status_code == 200
-
     data = response.json()
-
     assert data["alternative_id"] == "REC-SHP001"
     assert data["order_id"] == "SHP001"
     assert data["recommended_action"] == "Alternate Supplier"
@@ -191,19 +147,12 @@ def test_alternatives_response_values():
 
 def test_alternatives_recommendation_is_persisted():
     response = client.get("/shipments/SHP001/alternatives")
-
     assert response.status_code == 200
-
     data = response.json()
-
     assert data["alternative_id"] == "REC-SHP001"
-
     response_again = client.get("/shipments/SHP001/alternatives")
-
     assert response_again.status_code == 200
-
     data_again = response_again.json()
-
     assert data_again["alternative_id"] == "REC-SHP001"
     assert data_again["recommended_action"] == data["recommended_action"]
 
@@ -213,35 +162,27 @@ def test_alternatives_prediction_probability_out_of_range():
     from models import Prediction
 
     db = SessionLocal()
-
     original_probability = None
-
+    prediction = None
     try:
         prediction = (
             db.query(Prediction)
             .filter(Prediction.shipment_id == "SHP001")
             .first()
         )
-
         assert prediction is not None
-
         original_probability = prediction.delay_probability
-
         prediction.delay_probability = 1.5
         db.commit()
-
         response = client.get("/shipments/SHP001/alternatives")
-
         assert response.status_code == 400
         assert response.json()["detail"] == (
             "prediction_probability must be between 0 and 1"
         )
-
     finally:
-        if original_probability is not None:
+        if prediction is not None and original_probability is not None:
             prediction.delay_probability = original_probability
             db.commit()
-
         db.close()
 
 
@@ -250,35 +191,27 @@ def test_alternatives_negative_probability():
     from models import Prediction
 
     db = SessionLocal()
-
     original_probability = None
-
+    prediction = None
     try:
         prediction = (
             db.query(Prediction)
             .filter(Prediction.shipment_id == "SHP001")
             .first()
         )
-
         assert prediction is not None
-
         original_probability = prediction.delay_probability
-
         prediction.delay_probability = -0.1
         db.commit()
-
         response = client.get("/shipments/SHP001/alternatives")
-
         assert response.status_code == 400
         assert response.json()["detail"] == (
             "prediction_probability must be between 0 and 1"
         )
-
     finally:
-        if original_probability is not None:
+        if prediction is not None and original_probability is not None:
             prediction.delay_probability = original_probability
             db.commit()
-
         db.close()
 
 
@@ -294,11 +227,8 @@ def test_save_decision():
             "selected_action": "Use alternate carrier",
         },
     )
-
     assert response.status_code == 200
-
     data = response.json()
-
     assert data["shipment_id"] == "SHP001"
     assert data["alternative_id"] == "ALT001"
     assert data["selected_action"] == "Use alternate carrier"
@@ -306,7 +236,6 @@ def test_save_decision():
 
 def test_get_decisions():
     response = client.get("/shipments/SHP001/decisions")
-
     assert response.status_code == 200
     assert isinstance(response.json(), list)
 
@@ -317,35 +246,30 @@ def test_get_decisions():
 
 def test_shipment_not_found():
     response = client.get("/shipments/SHP999")
-
     assert response.status_code == 404
     assert response.json()["detail"] == "Shipment not found"
 
 
 def test_another_shipment_not_found():
     response = client.get("/shipments/DOES_NOT_EXIST")
-
     assert response.status_code == 404
     assert response.json()["detail"] == "Shipment not found"
 
 
 def test_prediction_not_found():
     response = client.get("/shipments/SHP999/prediction")
-
     assert response.status_code == 404
     assert response.json()["detail"] == "Prediction not found"
 
 
 def test_alternatives_shipment_not_found():
     response = client.get("/shipments/SHP999/alternatives")
-
     assert response.status_code == 404
     assert response.json()["detail"] == "Shipment not found"
 
 
 def test_decisions_shipment_not_found():
     response = client.get("/shipments/SHP999/decisions")
-
     assert response.status_code == 404
     assert response.json()["detail"] == "Shipment not found"
 
@@ -362,7 +286,6 @@ def test_empty_alternative_id():
             "selected_action": "Use alternate carrier",
         },
     )
-
     assert response.status_code == 422
 
 
@@ -374,7 +297,6 @@ def test_empty_selected_action():
             "selected_action": "",
         },
     )
-
     assert response.status_code == 422
 
 
@@ -386,7 +308,6 @@ def test_whitespace_only_alternative_id():
             "selected_action": "Use alternate carrier",
         },
     )
-
     assert response.status_code == 422
 
 
@@ -398,7 +319,6 @@ def test_whitespace_only_selected_action():
             "selected_action": "   ",
         },
     )
-
     assert response.status_code == 422
 
 
@@ -410,7 +330,6 @@ def test_selected_action_does_not_match_alternative():
             "selected_action": "Wrong action",
         },
     )
-
     assert response.status_code == 400
     assert response.json()["detail"] == (
         "Selected action does not match the alternative"
@@ -425,7 +344,6 @@ def test_alternative_not_found():
             "selected_action": "Some action",
         },
     )
-
     assert response.status_code == 404
     assert response.json()["detail"] == (
         "Alternative not found for this shipment"
@@ -438,22 +356,14 @@ def test_alternative_not_found():
 
 def test_decisions_response_fields():
     response = client.get("/shipments/SHP001/decisions")
-
     assert response.status_code == 200
-
     data = response.json()
-
     assert isinstance(data, list)
-
     if data:
         expected_fields = {
-            "decision_id",
-            "shipment_id",
-            "alternative_id",
-            "selected_action",
-            "decision_timestamp",
+            "decision_id", "shipment_id", "alternative_id",
+            "selected_action", "decision_timestamp",
         }
-
         assert set(data[0].keys()) == expected_fields
 
 
@@ -466,16 +376,13 @@ def test_multiple_decisions_can_be_saved_and_retrieved():
         ("TEST-DAY6-ALT1", "Use alternate carrier"),
         ("TEST-DAY6-ALT2", "Continue with current carrier"),
     ]
-
     db = SessionLocal()
-
     try:
         shipment = (
             db.query(Shipment)
             .filter(Shipment.shipment_id == shipment_id)
             .first()
         )
-
         if shipment is None:
             shipment = Shipment(
                 shipment_id=shipment_id,
@@ -484,14 +391,12 @@ def test_multiple_decisions_can_be_saved_and_retrieved():
             )
             db.add(shipment)
             db.flush()
-
         for alternative_id, action in alternative_data:
             alternative = (
                 db.query(Alternative)
                 .filter(Alternative.alternative_id == alternative_id)
                 .first()
             )
-
             if alternative is None:
                 db.add(
                     Alternative(
@@ -500,25 +405,18 @@ def test_multiple_decisions_can_be_saved_and_retrieved():
                         action=action,
                     )
                 )
-
         db.commit()
-
     finally:
         db.close()
 
-    # Retrieve existing test decisions so repeated test runs
-    # don't fail because the database already contains records.
     existing_response = client.get(
         f"/shipments/{shipment_id}/decisions"
     )
-
     assert existing_response.status_code == 200
-
     existing_actions = {
         decision["selected_action"]
         for decision in existing_response.json()
     }
-
     for alternative_id, action in alternative_data:
         if action not in existing_actions:
             save_response = client.post(
@@ -528,22 +426,14 @@ def test_multiple_decisions_can_be_saved_and_retrieved():
                     "selected_action": action,
                 },
             )
-
             assert save_response.status_code == 200
 
-    response = client.get(
-        f"/shipments/{shipment_id}/decisions"
-    )
-
+    response = client.get(f"/shipments/{shipment_id}/decisions")
     assert response.status_code == 200
-
     decisions = response.json()
-
     saved_actions = {
-        decision["selected_action"]
-        for decision in decisions
+        decision["selected_action"] for decision in decisions
     }
-
     assert {
         "Use alternate carrier",
         "Continue with current carrier",
@@ -552,11 +442,8 @@ def test_multiple_decisions_can_be_saved_and_retrieved():
 
 def test_retrieved_decisions_have_valid_values():
     response = client.get("/shipments/SHP001/decisions")
-
     assert response.status_code == 200
-
     decisions = response.json()
-
     for decision in decisions:
         assert isinstance(decision["decision_id"], int)
         assert decision["shipment_id"] == "SHP001"
@@ -567,11 +454,8 @@ def test_retrieved_decisions_have_valid_values():
 
 def test_decisions_are_associated_with_requested_shipment():
     response = client.get("/shipments/SHP001/decisions")
-
     assert response.status_code == 200
-
     decisions = response.json()
-
     for decision in decisions:
         assert decision["shipment_id"] == "SHP001"
 
@@ -581,16 +465,13 @@ def test_shipment_without_decisions_returns_empty_list():
     from models import Shipment
 
     shipment_id = "TEST-DAY6-EMPTY"
-
     db = SessionLocal()
-
     try:
         shipment = (
             db.query(Shipment)
             .filter(Shipment.shipment_id == shipment_id)
             .first()
         )
-
         if shipment is None:
             db.add(
                 Shipment(
@@ -600,13 +481,84 @@ def test_shipment_without_decisions_returns_empty_list():
                 )
             )
             db.commit()
-
     finally:
         db.close()
-
-    response = client.get(
-        f"/shipments/{shipment_id}/decisions"
-    )
-
+    response = client.get(f"/shipments/{shipment_id}/decisions")
     assert response.status_code == 200
     assert response.json() == []
+
+
+# --------------------------------------------------
+# Day 15: End-to-end backend workflow test
+# --------------------------------------------------
+
+def test_end_to_end_shipment_decision_workflow():
+    """Test shipment -> prediction -> recommendation -> save -> retrieve."""
+    shipment_id = "SHP001"
+
+    # 1. Retrieve shipment
+    shipment_response = client.get(f"/shipments/{shipment_id}")
+    assert shipment_response.status_code == 200
+    shipment = shipment_response.json()
+    assert shipment["shipment_id"] == shipment_id
+    assert shipment["origin"]
+    assert shipment["destination"]
+
+    # 2. Retrieve prediction
+    prediction_response = client.get(
+        f"/shipments/{shipment_id}/prediction"
+    )
+    assert prediction_response.status_code == 200
+    prediction = prediction_response.json()
+    assert prediction["shipment_id"] == shipment_id
+    assert 0 <= prediction["delay_probability"] <= 1
+    assert prediction["delay_label"]
+    assert prediction["risk_level"]
+
+    # 3. Generate or retrieve recommendation
+    recommendation_response = client.get(
+        f"/shipments/{shipment_id}/alternatives"
+    )
+    assert recommendation_response.status_code == 200
+    recommendation = recommendation_response.json()
+    assert recommendation["order_id"] == shipment_id
+    assert recommendation["alternative_id"]
+    assert recommendation["recommended_action"]
+    assert recommendation["recommendation_reason"]
+
+    # 4. Save the selected decision
+    decision_payload = {
+        "alternative_id": recommendation["alternative_id"],
+        "selected_action": recommendation["recommended_action"],
+    }
+    save_response = client.post(
+        f"/shipments/{shipment_id}/decisions",
+        json=decision_payload,
+    )
+    assert save_response.status_code == 200
+    saved_decision = save_response.json()
+    assert saved_decision["shipment_id"] == shipment_id
+    assert saved_decision["alternative_id"] == recommendation["alternative_id"]
+    assert saved_decision["selected_action"] == recommendation["recommended_action"]
+    assert saved_decision["decision_timestamp"]
+
+    # 5. Retrieve decisions and confirm this saved record is present
+    decisions_response = client.get(
+        f"/shipments/{shipment_id}/decisions"
+    )
+    assert decisions_response.status_code == 200
+    decisions = decisions_response.json()
+    assert isinstance(decisions, list)
+
+    matching_decisions = [
+        decision
+        for decision in decisions
+        if decision["decision_id"] == saved_decision["decision_id"]
+    ]
+    assert len(matching_decisions) == 1
+
+    retrieved_decision = matching_decisions[0]
+    assert retrieved_decision["shipment_id"] == shipment_id
+    assert retrieved_decision["alternative_id"] == recommendation["alternative_id"]
+    assert retrieved_decision["selected_action"] == recommendation["recommended_action"]
+    assert retrieved_decision["decision_timestamp"]
