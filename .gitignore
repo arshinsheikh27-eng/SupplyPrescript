@@ -219,3 +219,6 @@ __marimo__/
 # Raw dataset files (keep local; do not commit)
 data/raw/
 data/processed/
+
+# Local SQLite database
+backend/*.db
