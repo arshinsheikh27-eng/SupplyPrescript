@@ -1,5 +1,7 @@
 import pandas as pd
-
+from pathlib import Path
+import matplotlib.pyplot as plt
+from sklearn.metrics import ConfusionMatrixDisplay, roc_curve
 from sklearn.compose import ColumnTransformer
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.impute import SimpleImputer
@@ -210,7 +212,83 @@ cm = confusion_matrix(
     y_test,
     test_predictions
 )
+# ---------------------------------------------------------
+# 10. Generate Model Evaluation Charts
+# ---------------------------------------------------------
 
+IMAGE_DIR = Path("Images")
+IMAGE_DIR.mkdir(parents=True, exist_ok=True)
+
+
+# 1. Confusion Matrix
+fig, ax = plt.subplots(figsize=(7, 5))
+
+disp = ConfusionMatrixDisplay(
+    confusion_matrix=cm,
+    display_labels=["On-time", "Late"]
+)
+
+disp.plot(
+    ax=ax,
+    cmap="Blues",
+    values_format="d",
+    colorbar=False
+)
+
+ax.set_title("Random Forest - Confusion Matrix")
+ax.set_xlabel("Predicted Delivery Risk")
+ax.set_ylabel("Actual Delivery Risk")
+
+plt.tight_layout()
+
+plt.savefig(
+    IMAGE_DIR / "confusion-matrix.png",
+    dpi=300,
+    bbox_inches="tight"
+)
+
+plt.close()
+
+
+# 2. ROC Curve
+fpr, tpr, thresholds = roc_curve(
+    y_test,
+    test_probabilities
+)
+
+fig, ax = plt.subplots(figsize=(7, 5))
+
+ax.plot(
+    fpr,
+    tpr,
+    label=f"Random Forest (AUC = {roc_auc:.3f})",
+    linewidth=2
+)
+
+ax.plot(
+    [0, 1],
+    [0, 1],
+    linestyle="--",
+    label="Random Classifier"
+)
+
+ax.set_title("Random Forest - ROC Curve")
+ax.set_xlabel("False Positive Rate")
+ax.set_ylabel("True Positive Rate")
+ax.legend(loc="lower right")
+ax.grid(alpha=0.3)
+
+plt.tight_layout()
+
+plt.savefig(
+    IMAGE_DIR / "roc-curve.png",
+    dpi=300,
+    bbox_inches="tight"
+)
+
+plt.close()
+
+print("\nEvaluation charts saved successfully in Images folder.")
 
 # ---------------------------------------------------------
 # 10. Display final results
